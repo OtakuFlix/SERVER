@@ -12,7 +12,7 @@ from utils.master_id import get_base_name_from_filename
 user_folder_context = {}
 user_quality_context = {}
 
-def set_user_folder_context(user_id: int, folder_id: str):
+def set_user_folder_context(user_id: int, folder_id):
     user_folder_context[user_id] = folder_id
 
 def set_user_quality_context(user_id: int, quality: str):
@@ -22,7 +22,7 @@ def clear_user_folder_context(user_id: int):
     user_folder_context.pop(user_id, None)
     user_quality_context.pop(user_id, None)
 
-def get_user_folder_context(user_id: int) -> str:
+def get_user_folder_context(user_id: int):
     return user_folder_context.get(user_id)
 
 def get_user_quality_context(user_id: int) -> str:
@@ -164,6 +164,8 @@ async def handle_media(client, message: Message):
             return
         
         mongo_id = insert_result.get('documentId')
+        master_group_id = insert_result.get('masterGroupId')
+        
         if not mongo_id:
             await message.reply_text("⚠️ Failed to save file.")
             return
@@ -175,6 +177,7 @@ async def handle_media(client, message: Message):
                 f"📁 **Folder:** {folder['name']}\n"
                 f"🆔 **Folder ID:** `{folder_id}`\n"
                 f"🎬 **File ID:** `{mongo_id}`\n"
+                f"🔗 **Master Group ID:** `{master_group_id}`\n"
                 f"📄 **File Name:** {file_name}\n"
                 f"📦 **Base Name:** {base_name}\n"
             )
@@ -226,8 +229,10 @@ async def handle_media(client, message: Message):
         
         response = (
             f"✅ **File Added Successfully!**\n\n"
+            f"**━━━━━━━━━━━━━━━━━━━━**\n\n"
             f"📄 **Name:** {file_name}\n"
             f"📦 **Base Name:** {base_name}\n"
+            f"🔗 **Master Group ID:** `{master_group_id}`\n"
             f"💾 **Size:** {size_mb:.2f} MB\n"
         )
         
@@ -241,7 +246,8 @@ async def handle_media(client, message: Message):
             response += f"⏱ **Duration:** {mins}m {secs}s\n"
         
         response += (
-            f"\n🔗 **Links:**\n"
+            f"\n**━━━━━━━━━━━━━━━━━━━━**\n\n"
+            f"🔗 **Quick Links:**\n"
             f"▶️ Watch: `{watch_url}`\n"
             f"📥 Stream: `{stream_url}`\n"
             f"⬇️ Download: `{download_url}`\n\n"
@@ -250,7 +256,8 @@ async def handle_media(client, message: Message):
         if auto_mode:
             response += "✅ **Auto-saved from caption format**\n\n"
         
-        response += "Send more files or use /done when finished."
+        response += "**━━━━━━━━━━━━━━━━━━━━**\n\n"
+        response += "📤 Send more files or use /done when finished."
         
         await message.reply_text(response)
         
@@ -266,11 +273,14 @@ async def done_adding_files(client, message: Message):
     if folder_id:
         folder = await get_folder_by_id(folder_id)
         await message.reply_text(
-            f"✅ Finished adding files to **{folder['name']}**\n\n"
-            f"Use /myfolders to view your folders."
+            f"✅ **Upload Complete!**\n\n"
+            f"📁 Finished adding files to **{folder['name']}**\n\n"
+            f"**━━━━━━━━━━━━━━━━━━━━**\n\n"
+            f"📊 Use /myfolders to view your folders\n"
+            f"🔗 Use /stats to see your statistics"
         )
     else:
-        await message.reply_text("You weren't adding files to any folder.")
+        await message.reply_text("⚠️ You weren't adding files to any folder.")
 
 def register_media_handlers(bot):
     bot.on_message(filters.private & (filters.video | filters.document), group=0)(handle_media)
