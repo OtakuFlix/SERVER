@@ -33,7 +33,7 @@ class Config:
             LOGS_CHANNEL_ID=int(os.getenv("LOGS_CHANNEL_ID", -1003035992409)),
             MONGODB_URI=os.getenv("MONGODB_URI", "mongodb+srv://mhsm:mhsm@cluster0.j9figvh.mongodb.net/?retryWrites=true&w=majority"),
             MONGODB_DB=os.getenv("MONGODB_DB", "to"),
-            BASE_APP_URL=os.getenv("BASE_APP_URL", "http://localhost:8000"),
+            BASE_APP_URL=os.getenv("BASE_APP_URL", "https://aniflix.koyeb.app"),
             PORT=int(os.getenv("PORT", "8000")),
         )
 
