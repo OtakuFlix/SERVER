@@ -33,9 +33,7 @@ async def disconnect_db():
         print("[DATABASE] Disconnected from MongoDB")
 
 async def create_indexes():
-    """Create database indexes for performance"""
     try:
-        # Drop legacy unique index that referenced the deprecated fileId field
         try:
             await db_instance.db.files.drop_index("fileId_1")
             print("[DATABASE] Dropped legacy fileId index")
@@ -45,25 +43,22 @@ async def create_indexes():
         except Exception as drop_error:
             print(f"[DATABASE] Error dropping legacy indexes: {drop_error}")
         
-        # Folders collection indexes (now with integer IDs)
         await db_instance.db.folders.create_index("folderId", unique=True)
         await db_instance.db.folders.create_index("createdBy")
         await db_instance.db.folders.create_index([("createdBy", 1), ("createdAt", -1)])
         
-        # Files collection indexes
         await db_instance.db.files.create_index([("folderId", 1), ("telegramFileUniqueId", 1)], unique=True)
         await db_instance.db.files.create_index("folderId")
         await db_instance.db.files.create_index("telegramFileId")
         await db_instance.db.files.create_index([("folderId", 1), ("uploadedAt", -1)])
         
-        # Quality folder indexes
         await db_instance.db.folders.create_index([("parentFolderId", 1), ("isQualityFolder", 1), ("quality", 1)])
         
-        # Base name and quality group indexes
         await db_instance.db.files.create_index("baseName")
         await db_instance.db.files.create_index([("folderId", 1), ("baseName", 1)])
         await db_instance.db.files.create_index([("baseName", 1), ("quality", 1)])
         await db_instance.db.files.create_index("masterGroupId")
+        await db_instance.db.files.create_index("parent_master_group_id")
         
         print("[DATABASE] Indexes created successfully")
     except Exception as e:

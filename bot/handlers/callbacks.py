@@ -14,6 +14,9 @@ from database.operations import (
 )
 from bot.handlers.helpers import show_folders_page, show_folder_contents, show_quality_folders, show_files_by_basename
 from config import config
+import html
+import os
+from urllib.parse import urlparse
 import math
 
 PAGE_SIZE = 8
@@ -73,193 +76,249 @@ Choose an option below to continue:
     @bot.on_callback_query(filters.regex(r"^all_embeds:[\w]+$"))
     async def all_embeds_callback(bot_instance, callback: CallbackQuery):
         folder_id = callback.data.split(":")[1]
-        
-        folder = await get_folder_by_id(folder_id)
-        if not folder:
-            await callback.answer("❌ Folder not found!", show_alert=True)
-            return
-        
-        await callback.answer("🔄 Generating embed links...", show_alert=False)
-        
-        # Get all quality folders
-        quality_folders = await get_quality_folders(folder_id)
-        
-        all_files = []
-        for qf in quality_folders:
-            files = await get_all_folder_files(qf['folderId'])
-            all_files.extend(files)
-        
-        if not all_files:
-            await callback.message.reply_text("❌ No files found in this folder!")
-            return
-        
-        # Group files by masterGroupId
-        master_groups = {}
-        for file in all_files:
-            master_id = file.get('masterGroupId')
-            if not master_id:
-                continue
-            
-            if master_id not in master_groups:
-                master_groups[master_id] = {
-                    'fileName': file.get('fileName', 'Unnamed'),
-                    'baseName': file.get('baseName', 'Unknown'),
-                    'masterGroupId': master_id,
-                    'qualities': []
-                }
-            master_groups[master_id]['qualities'].append(file.get('quality', 'Unknown'))
-        
-        if not master_groups:
-            await callback.message.reply_text("❌ No master group IDs found!")
-            return
-        
-        message_text = f"🔗 **All Embed Links - {folder['name']}**\n\n"
-        message_text += f"📁 Total Groups: {len(master_groups)}\n"
-        message_text += f"━━━━━━━━━━━━━━━━━━━━\n\n"
-        
-        for idx, (master_id, data) in enumerate(sorted(master_groups.items()), 1):
-            file_name = data['fileName']
-            qualities = ', '.join(sorted(set(data['qualities'])))
-            embed_link = f"{config.BASE_APP_URL}/embed/{master_id}"
-            
-            message_text += f"{idx}. **{file_name}**\n"
-            message_text += f"   Qualities: [{qualities}]\n"
-            message_text += f"   {embed_link}\n\n"
-            
-            # Telegram message limit ~4096 chars
-            if len(message_text) > 3500:
-                await callback.message.reply_text(message_text)
-                message_text = ""
-        
-        if message_text:
-            await callback.message.reply_text(message_text)
-        
-        await callback.message.reply_text(
-            f"✅ Generated {len(master_groups)} embed links!",
-            reply_markup=InlineKeyboardMarkup([[
-                InlineKeyboardButton("⬅️ Back to Folder", callback_data=f"folder:{folder_id}:1")
-            ]])
-        )
 
-    @bot.on_callback_query(filters.regex(r"^all_downloads:[\w]+$"))
-    async def all_downloads_callback(bot_instance, callback: CallbackQuery):
-        folder_id = callback.data.split(":")[1]
-        
+        # Step 1: Fetch folder
         folder = await get_folder_by_id(folder_id)
         if not folder:
             await callback.answer("❌ Folder not found!", show_alert=True)
             return
-        
-        await callback.answer("🔄 Generating download links...", show_alert=False)
-        
+
+        await callback.answer("🔄 Generating embed links...", show_alert=False)
+
+        # Step 2: Collect all files from subfolders (quality folders)
         quality_folders = await get_quality_folders(folder_id)
-        
         all_files = []
-        for qf in quality_folders:
-            files = await get_all_folder_files(qf['folderId'])
+
+        if not quality_folders:
+            files = await get_all_folder_files(folder_id)
             all_files.extend(files)
-        
+        else:
+            for qf in quality_folders:
+                files = await get_all_folder_files(qf['folderId'])
+                all_files.extend(files)
+
         if not all_files:
             await callback.message.reply_text("❌ No files found in this folder!")
             return
-        
-        message_text = f"⬇️ **All Download Links - {folder['name']}**\n\n"
-        message_text += f"📁 Total Files: {len(all_files)}\n"
-        message_text += f"━━━━━━━━━━━━━━━━━━━━\n\n"
-        
-        for idx, file in enumerate(all_files, 1):
-            file_id = file['fileId']
-            file_name = file.get('fileName', 'Unnamed')
-            quality = file.get('quality', 'Unknown')
-            size = file.get('size', 0)
-            size_mb = size / (1024 * 1024) if size else 0
-            download_link = f"{config.BASE_APP_URL}/dl/{file_id}"
+
+        # Step 3: Group by baseName
+        file_groups = {}
+        for file in all_files:
+            base_name = file.get("baseName")
+            parent_master_group_id = file.get("parent_master_group_id")
+            master_group_id = file.get("masterGroupId")
+            master_id = parent_master_group_id or master_group_id
+
+            if not base_name:
+                continue
+
+            if base_name not in file_groups:
+                file_groups[base_name] = {
+                    "base_name": base_name,
+                    "master_group_id": master_id,
+                    "files": []
+                }
+
+            file_groups[base_name]["files"].append(file)
+
+        # Step 4: Determine proper base URL
+        raw_base = config.BASE_APP_URL or ""
+        parsed = urlparse(raw_base)
+        host = parsed.hostname or ""
+        scheme = parsed.scheme or "https"
+
+        if (not host) or ("localhost" in host) or host.startswith("127.") or host.startswith("0."):
+            base_url = "https://demo.com"
+        else:
+            netloc = parsed.netloc or host
+            base_url = f"{scheme}://{netloc}"
+
+        # Step 5: Build and send message chunks
+        max_message_length = 3500  # Telegram message limit
+        text_chunks = []
+        current_chunk = f"🎬 All Embed Links for Folder: {html.escape(folder['name'])}\n━━━━━━━━━━━━━━━━━━━━\n"
+        btn_rows = []
+        group_count = 0
+
+        for base_name, group in sorted(file_groups.items()):
+            master_group_id = group.get("master_group_id")
+            if not master_group_id:
+                continue
+
+            embed_url = f"{base_url}/embed/master/{master_group_id}"
+            # Strip file extension and wrap in E{}
+            name_without_ext = os.path.splitext(base_name)[0]
+            escaped_name = html.escape(f"E{name_without_ext}")
+            line = f"• {escaped_name}\n   `{embed_url}`\n"
+            # Check if adding this line would exceed max_message_length
+            if len(current_chunk) + len(line) > max_message_length:
+                text_chunks.append((current_chunk, btn_rows))
+                current_chunk = ""
+                btn_rows = []
+
+            current_chunk += line
+            group_count += 1
+
+        if current_chunk:
+            text_chunks.append((current_chunk, btn_rows))
+
+        # Step 6: Send each chunk with inline keyboard
+        for text, rows in text_chunks:
+            rows.append([InlineKeyboardButton("⬅️ Back to Folder", callback_data=f"folder:{folder_id}:1")])
+            await callback.message.reply_text(
+                text,
+                reply_markup=InlineKeyboardMarkup(rows),
+                disable_web_page_preview=True
+            )
+
+        await callback.answer(f"✅ Generated {group_count} embed links!", show_alert=True)
+        async def all_downloads_callback(bot_instance, callback: CallbackQuery):
+            folder_id = callback.data.split(":")[1]
             
-            message_text += f"{idx}. **{file_name}** [{quality}] ({size_mb:.1f}MB)\n"
-            message_text += f"   {download_link}\n\n"
+            folder = await get_folder_by_id(folder_id)
+            if not folder:
+                await callback.answer("❌ Folder not found!", show_alert=True)
+                return
             
-            if len(message_text) > 3500:
+            await callback.answer("🔄 Generating download links...", show_alert=False)
+            
+            quality_folders = await get_quality_folders(folder_id)
+            
+            all_files = []
+            for qf in quality_folders:
+                files = await get_all_folder_files(qf['folderId'])
+                all_files.extend(files)
+            
+            if not all_files:
+                await callback.message.reply_text("❌ No files found in this folder!")
+                return
+            
+            message_text = f"⬇️ **All Download Links - {folder['name']}**\n\n"
+            message_text += f"📁 Total Files: {len(all_files)}\n"
+            message_text += f"━━━━━━━━━━━━━━━━━━━━\n\n"
+            
+            for idx, file in enumerate(all_files, 1):
+                file_id = file['fileId']
+                file_name = file.get('fileName', 'Unnamed')
+                quality = file.get('quality', 'Unknown')
+                size = file.get('size', 0)
+                size_mb = size / (1024 * 1024) if size else 0
+                download_link = f"{config.BASE_APP_URL}/dl/{file_id}"
+                
+                message_text += f"{idx}. **{file_name}** [{quality}] ({size_mb:.1f}MB)\n"
+                message_text += f"   {download_link}\n\n"
+                
+                if len(message_text) > 3500:
+                    await callback.message.reply_text(message_text)
+                    message_text = ""
+            
+            if message_text:
                 await callback.message.reply_text(message_text)
-                message_text = ""
-        
-        if message_text:
-            await callback.message.reply_text(message_text)
-        
-        await callback.message.reply_text(
-            f"✅ Generated {len(all_files)} download links!",
-            reply_markup=InlineKeyboardMarkup([[
-                InlineKeyboardButton("⬅️ Back to Folder", callback_data=f"folder:{folder_id}:1")
-            ]])
-        )
+            
+            await callback.message.reply_text(
+                f"✅ Generated {len(all_files)} download links!",
+                reply_markup=InlineKeyboardMarkup([[
+                    InlineKeyboardButton("⬅️ Back to Folder", callback_data=f"folder:{folder_id}:1")
+                ]])
+            )
 
     @bot.on_callback_query(filters.regex(r"^all_watch:[\w]+$"))
     async def all_watch_callback(bot_instance, callback: CallbackQuery):
         folder_id = callback.data.split(":")[1]
-        
+
+        # Step 1: Fetch folder
         folder = await get_folder_by_id(folder_id)
         if not folder:
             await callback.answer("❌ Folder not found!", show_alert=True)
             return
-        
+
         await callback.answer("🔄 Generating watch links...", show_alert=False)
-        
+
+        # Step 2: Collect all files from subfolders (quality folders)
         quality_folders = await get_quality_folders(folder_id)
-        
         all_files = []
-        for qf in quality_folders:
-            files = await get_all_folder_files(qf['folderId'])
+
+        if not quality_folders:
+            files = await get_all_folder_files(folder_id)
             all_files.extend(files)
-        
+        else:
+            for qf in quality_folders:
+                files = await get_all_folder_files(qf['folderId'])
+                all_files.extend(files)
+
         if not all_files:
             await callback.message.reply_text("❌ No files found in this folder!")
             return
-        
-        # Group by masterGroupId for watch links
-        master_groups = {}
+
+        # Step 3: Group by baseName like embed logic, but keep master IDs
+        file_groups = {}
         for file in all_files:
-            master_id = file.get('masterGroupId')
-            if not master_id:
+            base_name = file.get("baseName")
+            parent_master_group_id = file.get("parent_master_group_id")
+            master_group_id = file.get("masterGroupId")
+            master_id = parent_master_group_id or master_group_id
+
+            if not base_name or not master_id:
                 continue
-            
-            if master_id not in master_groups:
-                master_groups[master_id] = {
-                    'fileName': file.get('fileName', 'Unnamed'),
-                    'baseName': file.get('baseName', 'Unknown'),
-                    'masterGroupId': master_id,
-                    'qualities': []
+
+            if base_name not in file_groups:
+                file_groups[base_name] = {
+                    "base_name": base_name,
+                    "master_group_id": master_id,
+                    "files": []
                 }
-            master_groups[master_id]['qualities'].append(file.get('quality', 'Unknown'))
-        
-        if not master_groups:
-            await callback.message.reply_text("❌ No master group IDs found!")
-            return
-        
-        message_text = f"▶️ **All Watch Links - {folder['name']}**\n\n"
-        message_text += f"📁 Total Groups: {len(master_groups)}\n"
-        message_text += f"━━━━━━━━━━━━━━━━━━━━\n\n"
-        
-        for idx, (master_id, data) in enumerate(sorted(master_groups.items()), 1):
-            file_name = data['fileName']
-            qualities = ', '.join(sorted(set(data['qualities'])))
-            watch_link = f"{config.BASE_APP_URL}/watch/{master_id}"
-            
-            message_text += f"{idx}. **{file_name}**\n"
-            message_text += f"   Qualities: [{qualities}]\n"
-            message_text += f"   {watch_link}\n\n"
-            
-            if len(message_text) > 3500:
-                await callback.message.reply_text(message_text)
-                message_text = ""
-        
-        if message_text:
-            await callback.message.reply_text(message_text)
-        
-        await callback.message.reply_text(
-            f"✅ Generated {len(master_groups)} watch links!",
-            reply_markup=InlineKeyboardMarkup([[
-                InlineKeyboardButton("⬅️ Back to Folder", callback_data=f"folder:{folder_id}:1")
-            ]])
-        )
+            file_groups[base_name]["files"].append(file)
+
+        # Step 4: Determine base URL
+        raw_base = config.BASE_APP_URL or ""
+        parsed = urlparse(raw_base)
+        host = parsed.hostname or ""
+        scheme = parsed.scheme or "https"
+
+        if (not host) or ("localhost" in host) or host.startswith("127.") or host.startswith("0."):
+            base_url = "https://demo.com"
+        else:
+            netloc = parsed.netloc or host
+            base_url = f"{scheme}://{netloc}"
+
+        # Step 5: Build multi-message chunks
+        max_message_length = 3500
+        text_chunks = []
+        current_chunk = f"▶️ **All Watch Links for Folder:** {html.escape(folder['name'])}\n━━━━━━━━━━━━━━━━━━━━\n"
+        group_count = 0
+
+        for base_name, group in sorted(file_groups.items()):
+            master_group_id = group.get("master_group_id")
+            if not master_group_id:
+                continue
+
+            # Strip extension and wrap in E{}
+            name_without_ext = os.path.splitext(base_name)[0]
+            escaped_name = html.escape(f"E{name_without_ext}")
+
+            watch_link = f"{base_url}/watch/master/{master_group_id}"
+            line = f"• {escaped_name}\n   `{watch_link}`\n"
+
+            if len(current_chunk) + len(line) > max_message_length:
+                text_chunks.append(current_chunk)
+                current_chunk = ""
+            current_chunk += line
+            group_count += 1
+
+        if current_chunk:
+            text_chunks.append(current_chunk)
+
+        # Step 6: Send each chunk with Back button
+        for chunk in text_chunks:
+            await callback.message.reply_text(
+                chunk,
+                reply_markup=InlineKeyboardMarkup([[
+                    InlineKeyboardButton("⬅️ Back to Folder", callback_data=f"folder:{folder_id}:1")
+                ]]),
+                disable_web_page_preview=True
+            )
+
+        await callback.answer(f"✅ Generated {group_count} watch links!", show_alert=True)
 
     @bot.on_callback_query(filters.regex(r"^file:[a-f0-9]{24}$"))
     async def file_view_callback(bot_instance, callback: CallbackQuery):

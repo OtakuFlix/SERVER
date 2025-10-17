@@ -165,102 +165,95 @@ async def handle_media(client, message: Message):
         
         mongo_id = insert_result.get('documentId')
         master_group_id = insert_result.get('masterGroupId')
+        parent_master_group_id = insert_result.get('parent_master_group_id')
         
         if not mongo_id:
             await message.reply_text("⚠️ Failed to save file.")
             return
         
+        # --- Safe URL generation ---
+        base_url = config.BASE_APP_URL
+
+        # If base_url is localhost or 127.x.x.x, replace with demo domain
+        if "localhost" in base_url or "127.0.0.1" in base_url:
+            base_url = "https://demo.com"
+
+        embed_url = f"{base_url}/embed/master/{parent_master_group_id or master_group_id}"
+        watch_url = f"{base_url}/watch/{mongo_id}"
+        download_url = f"{base_url}/dl/{mongo_id}"
+
+
+        # Build clean caption for channel
+        channel_caption = (
+            f"🎬 **New File Uploaded!**\n\n"
+            f"📁 **Folder:** {folder['name']}\n"
+            f"🔗 **Embed Link:** {base_url}/embed/master/{parent_master_group_id or master_group_id}\n"
+            f"📄 **File Name:** {file_name}\n"
+        )
+        if quality:
+            channel_caption += f"🎥 **Quality:** {quality}\n"
+        if language:
+            channel_caption += f"🗣 **Language:** {language}\n"
+        if file_size:
+            size_mb = file_size / (1024 * 1024)
+            channel_caption += f"💾 **Size:** {size_mb:.2f} MB\n"
+        if duration:
+            mins = duration // 60
+            secs = duration % 60
+            channel_caption += f"⏱ **Duration:** {mins}m {secs}s\n"
+
+        channel_caption += f"\n👤 **Uploaded by:** {message.from_user.first_name} ({user_id})"
+
+        # Inline buttons layout
+        buttons = [
+            [
+                InlineKeyboardButton("📺 Embed", url=embed_url),
+                InlineKeyboardButton("▶️ Watch", url=watch_url)
+            ],
+            [
+                InlineKeyboardButton("⬇️ Download", url=download_url)
+            ]
+        ]
+
+        # Forward to channel
         try:
             bot = get_bot()
-            
-            channel_caption = (
-                f"📁 **Folder:** {folder['name']}\n"
-                f"🆔 **Folder ID:** `{folder_id}`\n"
-                f"🎬 **File ID:** `{mongo_id}`\n"
-                f"🔗 **Master Group ID:** `{master_group_id}`\n"
-                f"📄 **File Name:** {file_name}\n"
-                f"📦 **Base Name:** {base_name}\n"
-            )
-            
-            if quality:
-                channel_caption += f"🎥 **Quality:** {quality}\n"
-            if language:
-                channel_caption += f"🗣️ **Language:** {language}\n"
-            if file_size:
-                size_mb = file_size / (1024 * 1024)
-                channel_caption += f"💾 **Size:** {size_mb:.2f} MB\n"
-            if duration:
-                mins = duration // 60
-                secs = duration % 60
-                channel_caption += f"⏱️ **Duration:** {mins}m {secs}s\n"
-            
-            watch_url = f"{config.BASE_APP_URL}/watch/{mongo_id}"
-            stream_url = f"{config.BASE_APP_URL}/{mongo_id}"
-            download_url = f"{config.BASE_APP_URL}/dl/{mongo_id}"
-            
-            channel_caption += (
-                f"\n🔗 **Links:**\n"
-                f"▶️ Watch: {watch_url}\n"
-                f"📥 Stream: {stream_url}\n"
-                f"⬇️ Download: {download_url}\n"
-                f"\n👤 **Uploaded by:** {message.from_user.first_name} ({user_id})"
-            )
-            
-            if auto_mode:
-                channel_caption += f"\n✅ **Auto-parsed from caption**"
-            
             if config.CHANNEL_ID:
                 await bot.copy_message(
                     chat_id=config.CHANNEL_ID,
                     from_chat_id=message.chat.id,
                     message_id=message.id,
-                    caption=channel_caption
+                    caption=channel_caption,
+                    reply_markup=InlineKeyboardMarkup(buttons)
                 )
                 print(f"[MEDIA] File forwarded to channel: {file_name}")
-            
         except Exception as e:
             print(f"[MEDIA] Error forwarding to channel: {e}")
-        
-        watch_url = f"{config.BASE_APP_URL}/watch/{mongo_id}"
-        stream_url = f"{config.BASE_APP_URL}/{mongo_id}"
-        download_url = f"{config.BASE_APP_URL}/dl/{mongo_id}"
-        
-        size_mb = file_size / (1024 * 1024) if file_size else 0
-        
+
+        # Send confirmation to user
         response = (
             f"✅ **File Added Successfully!**\n\n"
-            f"**━━━━━━━━━━━━━━━━━━━━**\n\n"
-            f"📄 **Name:** {file_name}\n"
-            f"📦 **Base Name:** {base_name}\n"
-            f"🔗 **Master Group ID:** `{master_group_id}`\n"
-            f"💾 **Size:** {size_mb:.2f} MB\n"
+            f"📦 **Name:** {base_name}\n"
+            f"🔗 **Embed Link:** {base_url}/embed/master/{parent_master_group_id or master_group_id}\n"
         )
-        
         if quality:
             response += f"🎥 **Quality:** {quality}\n"
         if language:
             response += f"🗣 **Language:** {language}\n"
+        if file_size:
+            response += f"💾 **Size:** {size_mb:.2f} MB\n"
         if duration:
             mins = duration // 60
             secs = duration % 60
             response += f"⏱ **Duration:** {mins}m {secs}s\n"
-        
-        response += (
-            f"\n**━━━━━━━━━━━━━━━━━━━━**\n\n"
-            f"🔗 **Quick Links:**\n"
-            f"▶️ Watch: `{watch_url}`\n"
-            f"📥 Stream: `{stream_url}`\n"
-            f"⬇️ Download: `{download_url}`\n\n"
+
+        response += "\n**━━━━━━━━━━━━━━━━━━━━**\n"
+
+        await message.reply_text(
+            response,
+            reply_markup=InlineKeyboardMarkup(buttons)
         )
-        
-        if auto_mode:
-            response += "✅ **Auto-saved from caption format**\n\n"
-        
-        response += "**━━━━━━━━━━━━━━━━━━━━**\n\n"
-        response += "📤 Send more files or use /done when finished."
-        
-        await message.reply_text(response)
-        
+
     except Exception as e:
         print(f"[MEDIA] Error handling media: {e}")
         await message.reply_text("❌ Failed to save file. Please try again.")

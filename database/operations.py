@@ -280,8 +280,17 @@ async def add_file_to_folder(file_data: dict, uploaded_by: int):
     
     folder_id = file_data.get('folderId')
     base_name = file_data.get('baseName')
-    if folder_id and base_name:
+    
+    parent_folder = await db.folders.find_one({'folderId': folder_id})
+    if parent_folder and parent_folder.get('parentFolderId'):
+        parent_folder_id = parent_folder['parentFolderId']
+        parent_master_group_id = generate_master_group_id(str(parent_folder_id), base_name)
+        file_data['parent_master_group_id'] = parent_master_group_id
         file_data['masterGroupId'] = generate_master_group_id(str(folder_id), base_name)
+    else:
+        master_group_id = generate_master_group_id(str(folder_id), base_name)
+        file_data['masterGroupId'] = master_group_id
+        file_data['parent_master_group_id'] = master_group_id
     
     existing = await db.files.find_one({
         'telegramFileUniqueId': file_data.get('telegramFileUniqueId'),
@@ -291,6 +300,7 @@ async def add_file_to_folder(file_data: dict, uploaded_by: int):
         return {
             'documentId': str(existing['_id']),
             'masterGroupId': existing.get('masterGroupId'),
+            'parent_master_group_id': existing.get('parent_master_group_id'),
             'inserted': False
         }
     
@@ -308,15 +318,16 @@ async def add_file_to_folder(file_data: dict, uploaded_by: int):
             'fileName': file_data.get('fileName'),
             'quality': file_data.get('quality'),
             'masterGroupId': file_data.get('masterGroupId'),
+            'parent_master_group_id': file_data.get('parent_master_group_id'),
             'uploadedBy': uploaded_by
         })
     
     return {
         'documentId': str(result.inserted_id),
         'masterGroupId': file_data.get('masterGroupId'),
+        'parent_master_group_id': file_data.get('parent_master_group_id'),
         'inserted': True
     }
-
 async def get_file_by_id(file_id: str):
     db = get_database()
     try:

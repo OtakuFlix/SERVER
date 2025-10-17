@@ -8,6 +8,7 @@ from typing import Optional
 from utils.master_id import generate_master_group_id
 
 router = APIRouter()
+
 @router.get("/api/folder_list")
 async def get_folder_list(user_id: int, parent_id: Optional[str] = None, page: int = 1, page_size: int = 20):
     try:
@@ -52,6 +53,7 @@ async def get_simplified_file_list_api(folder_id: str):
                 {'$group': {
                     '_id': '$baseName',
                     'baseName': {'$first': '$baseName'},
+                    'master_group_id': {'$first': '$masterGroupId'},
                     'files': {'$push': {
                         'fileId': {'$toString': '$_id'},
                         'quality': '$quality',
@@ -73,6 +75,7 @@ async def get_simplified_file_list_api(folder_id: str):
                 {'$group': {
                     '_id': '$baseName',
                     'baseName': {'$first': '$baseName'},
+                    'parent_master_group_id': {'$first': '$parent_master_group_id'},
                     'files': {'$push': {
                         'fileId': {'$toString': '$_id'},
                         'quality': '$quality',
@@ -90,14 +93,15 @@ async def get_simplified_file_list_api(folder_id: str):
         result = []
         for group in file_groups:
             base_name = group['baseName']
+            master_group_id = group.get('parent_master_group_id') or group.get('master_group_id')
             
-            file_name_without_ext = base_name
-            if '.' in base_name:
-                parts = base_name.rsplit('.', 1)
-                if parts[1].lower() in ['mp4', 'mkv', 'avi', 'mov', 'wmv', 'flv', 'webm']:
-                    file_name_without_ext = parts[0]
-            
-            master_group_id = generate_master_group_id(folder_id, file_name_without_ext)
+            if not master_group_id:
+                file_name_without_ext = base_name
+                if '.' in base_name:
+                    parts = base_name.rsplit('.', 1)
+                    if parts[1].lower() in ['mp4', 'mkv', 'avi', 'mov', 'wmv', 'flv', 'webm']:
+                        file_name_without_ext = parts[0]
+                master_group_id = generate_master_group_id(folder_id, file_name_without_ext)
             
             qualities = {}
             for file in group['files']:
@@ -118,7 +122,7 @@ async def get_simplified_file_list_api(folder_id: str):
                 }
             
             result.append({
-                'name': file_name_without_ext,
+                'name': base_name,
                 'master_group_id': master_group_id,
                 'qualities': qualities
             })
@@ -140,27 +144,17 @@ async def stream_by_master_group(master_group_id: str, quality: str = Query(defa
         from database.connection import get_database
         db = get_database()
         
-        all_files = await db.files.find({}).to_list(length=None)
+        # FIXED: Search by masterGroupId instead of computing it
+        all_files = await db.files.find({'masterGroupId': master_group_id}).to_list(length=None)
         
         target_file = None
         for file in all_files:
-            base_name = file.get('baseName', '')
-            folder_id = file.get('folderId', '')
-            computed_id = generate_master_group_id(folder_id, base_name)
-            
-            if computed_id == master_group_id and file.get('quality') == quality:
+            if file.get('quality') == quality:
                 target_file = file
                 break
         
         if not target_file:
-            available_qualities = []
-            for file in all_files:
-                base_name = file.get('baseName', '')
-                folder_id = file.get('folderId', '')
-                computed_id = generate_master_group_id(folder_id, base_name)
-                
-                if computed_id == master_group_id:
-                    available_qualities.append(file.get('quality'))
+            available_qualities = [f.get('quality') for f in all_files]
             
             if available_qualities:
                 raise HTTPException(
@@ -331,30 +325,35 @@ async def get_master_group_info(master_group_id: str):
     try:
         from database.connection import get_database
         db = get_database()
-        
-        # Search by parent_master_group_id (for quality folder structure)
+
+        # Search in both masterGroupId and parent_master_group_id
         matched_files = await db.files.find({
-            'parent_master_group_id': master_group_id
+            '$or': [
+                {'masterGroupId': master_group_id},
+                {'parent_master_group_id': master_group_id}
+            ]
         }).to_list(length=None)
-        
+
         if not matched_files:
             raise HTTPException(status_code=404, detail="Master group not found")
-        
+
         folder_id = matched_files[0].get('folderId')
         base_name = matched_files[0].get('baseName')
-        
+
         qualities = {}
         for file in matched_files:
             quality = file.get('quality', 'Unknown')
-            size_mb = file.get('size', 0) / (1024 * 1024)
-            
+            size_bytes = file.get('size', 0)
+            size_mb = size_bytes / (1024 * 1024)
+            size_str = f"{size_mb:.1f} MB"
+
             qualities[quality] = {
                 'fileId': str(file['_id']),
-                'size': f"{size_mb:.1f} MB",
+                'size': size_str,
                 'fileName': file.get('fileName'),
                 'uploadedAt': file.get('uploadedAt').isoformat() if file.get('uploadedAt') else None
             }
-        
+
         return {
             'success': True,
             'master_group_id': master_group_id,
@@ -363,6 +362,7 @@ async def get_master_group_info(master_group_id: str):
             'qualities': qualities,
             'totalFiles': len(matched_files)
         }
+
     except HTTPException:
         raise
     except Exception as e:

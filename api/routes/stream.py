@@ -7,6 +7,7 @@ from pyrogram import raw
 from pyrogram.file_id import FileId, FileType, ThumbnailSource
 from pyrogram.session import Session, Auth
 from pyrogram import utils as pyro_utils
+import json
 import re
 import math
 from utils.master_id import generate_master_group_id
@@ -74,7 +75,7 @@ def get_artplayer_config_with_quality(file_id: str, stream_url: str, file_name: 
         const art = new Artplayer({{
             container: '#artplayer',
             url: '{stream_url}',
-            title: '{file_name}',
+            title: {json.dumps(file_name)},
             volume: 0.8,
             autoplay: false,
             pip: true,
