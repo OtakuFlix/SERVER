@@ -1,7 +1,7 @@
 # ==================== api/routes/download.py ====================
 from fastapi import APIRouter, HTTPException
 from fastapi.responses import StreamingResponse
-from database.operations import get_file_by_id, increment_downloads
+from database.operations import get_file_by_id, increment_downloads, get_folder_by_id
 from bot.client import get_bot
 from pyrogram import raw
 from pyrogram.file_id import FileId, FileType, ThumbnailSource
@@ -14,7 +14,7 @@ router = APIRouter()
 
 @router.get("/dl/{fileId}")
 async def download_file(fileId: str):
-    """Direct download with DC migration support"""
+    """Direct download with custom name: [ANIFLIX.IN] [Parent_folder_name] [Base_name].ext"""
     if not re.match(r'^[a-f0-9]{24}$', fileId):
         raise HTTPException(status_code=400, detail="Invalid file ID format")
     
@@ -33,28 +33,36 @@ async def download_file(fileId: str):
     
     await increment_downloads(fileId)
     
-    # Get filename and mime type
-    file_name = file_data.get('fileName', 'download')
+    # --- Dynamic parent folder name ---
+    parent_folder_name = ""
+    folder_id = file_data.get('folderId')
+    if folder_id:
+        folder = await get_folder_by_id(folder_id)
+        if folder and folder.get('parentFolderId'):
+            parent_folder = await get_folder_by_id(folder['parentFolderId'])
+            parent_folder_name = parent_folder.get('name', '') if parent_folder else ''
+        elif folder:
+            # If no parent, use the folder itself
+            parent_folder_name = folder.get('name', '')
+    
+    # Step 2: Construct custom filename
+    base_name = file_data.get('fileName', 'download')
+    name_without_ext, ext = os.path.splitext(base_name)
+    if not ext:
+        ext = ".mkv"
+    custom_file_name = f"[ANIFLIX.IN] {parent_folder_name} E{name_without_ext}{ext}"
+
     mime_type = file_data.get('mimeType', 'application/octet-stream')
     file_size = file_data.get('size', 0)
     
-    # Ensure file has an extension; if not, add .mkv
-    if not os.path.splitext(file_name)[1]:
-        file_name += '.mkv'
-    
     # Decode file_id
     file_id_obj = FileId.decode(telegram_file_id)
-    
-    # Get or create media session for the DC
     media_session = await get_media_session(bot_client, file_id_obj)
     
     async def file_stream():
         offset = 0
         chunk_size = 1024 * 1024  # 1MB
-        
-        # Get file location
         location = await get_location(file_id_obj)
-        
         try:
             while offset < file_size:
                 r = await media_session.invoke(
@@ -64,7 +72,6 @@ async def download_file(fileId: str):
                         limit=chunk_size
                     )
                 )
-                
                 if isinstance(r, raw.types.upload.File):
                     chunk = r.bytes
                     if not chunk:
@@ -73,13 +80,12 @@ async def download_file(fileId: str):
                     offset += len(chunk)
                 else:
                     break
-                    
         except Exception as e:
             print(f"Error downloading: {e}")
             raise
     
     headers = {
-        'Content-Disposition': f'attachment; filename="{file_name}"',
+        'Content-Disposition': f'attachment; filename="{custom_file_name}"',
         'Content-Type': mime_type,
         'Content-Length': str(file_size),
     }

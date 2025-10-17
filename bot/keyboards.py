@@ -196,3 +196,18 @@ def confirm_delete_kb(item_type: str, item_id: str, folder_id = None):
             [InlineKeyboardButton("✅ Yes, Delete All", callback_data=f"confirm_delete_folder:{item_id}")],
             [InlineKeyboardButton("❌ Cancel", callback_data=f"folder:{item_id}:1")]
         ])
+def main_menu_kb():
+    return InlineKeyboardMarkup([
+        [
+            InlineKeyboardButton("📁 Mʏ Fᴏʟᴅᴇʀs", callback_data="folders:1"),
+            InlineKeyboardButton("➕ Nᴇᴡ Fᴏʟᴅᴇʀ", callback_data="new_folder")
+        ],
+        [
+            InlineKeyboardButton("📊 Mʏ Sᴛᴀᴛɪsᴛɪᴄs", callback_data="stats"),
+            InlineKeyboardButton("💾 Bᴀᴄᴋᴜᴘ DB", callback_data="backup_menu")
+        ],
+        [
+            InlineKeyboardButton("ℹ️ Hᴇʟᴘ & Gᴜɪᴅᴇ", callback_data="help"),
+            InlineKeyboardButton("⚙️ Sᴇᴛᴛɪɴɢs", callback_data="settings")
+        ],
+    ])

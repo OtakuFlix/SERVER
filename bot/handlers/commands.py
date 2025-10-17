@@ -9,130 +9,293 @@ from bot.handlers.helpers import show_folders_page, show_folder_contents
 
 
 def register_command_handlers(bot):
-    """Register all command handlers on the given bot instance"""
 
     @bot.on_message(filters.command(["start", "menu"]) & filters.private)
     async def start_command(client, message: Message):
-        """Handle /start and /menu commands"""
         user = message.from_user
         
         welcome_text = f"""
-╔═══════════════════════════╗
-║   🎬 **TeleStore Bot** 🎬   ║
-╚═══════════════════════════╝
+╔══════════════════╗
+║   🎬 Tᴇʟᴇ Sᴛᴏʀᴇ Bᴏᴛ 🎬     ║
+╚══════════════════╝
 
-👋 **Welcome {user.first_name}!**
+👋 Wᴇʟᴄᴏᴍᴇ {user.first_name}!
 
-🌟 **Your Personal Cloud Storage Solution**
+🌟 Yᴏᴜʀ Pᴇʀsᴏɴᴀʟ Cʟᴏᴜᴅ Sᴛᴏʀᴀɢᴇ Sᴏʟᴜᴛɪᴏɴ
 
-**✨ Key Features:**
-• 📁 Organize files in folders & subfolders
-• 🎥 Multi-quality support (4K to 360p)
-• 🔗 Instant streaming links
-• ⬇️ Direct download support
-• 🌐 Embeddable video player
-• 💾 Database backup & restore
-• 📊 Detailed statistics tracking
+✨ Kᴇʏ Fᴇᴀᴛᴜʀᴇs:
+- 📁 Oʀɢᴀɴɪᴢᴇ ғɪʟᴇs ɪɴ ғᴏʟᴅᴇʀs & sᴜʙғᴏʟᴅᴇʀs
+- 🎥 Mᴜʟᴛɪ-ǫᴜᴀʟɪᴛʏ sᴜᴘᴘᴏʀᴛ (4K ᴛᴏ 360ᴘ)
+- 🔗 Iɴsᴛᴀɴᴛ sᴛʀᴇᴀᴍɪɴɢ ʟɪɴᴋs
+- ⬇️ Dɪʀᴇᴄᴛ ᴅᴏᴡɴʟᴏᴀᴅ sᴜᴘᴘᴏʀᴛ
+- 🌐 Eᴍʙᴇᴅᴅᴀʙʟᴇ ᴠɪᴅᴇᴏ ᴘʟᴀʏᴇʀ
+- 💾 Dᴀᴛᴀʙᴀsᴇ ʙᴀᴄᴋᴜᴘ & ʀᴇsᴛᴏʀᴇ
+- 📊 Dᴇᴛᴀɪʟᴇᴅ sᴛᴀᴛɪsᴛɪᴄs ᴛʀᴀᴄᴋɪɴɢ
+- 📜 Aᴘɪ sᴜᴘᴘᴏʀᴛ
 
-**🚀 Quick Start:**
-1️⃣ Create a folder with /newfolder
-2️⃣ Upload files with quality tags
-3️⃣ Get shareable links instantly
+🚀 Qᴜɪᴄᴋ Sᴛᴀʀᴛ:
+1️⃣ Cʀᴇᴀᴛᴇ ᴀ ғᴏʟᴅᴇʀ ᴡɪᴛʜ /newfolder
+2️⃣ Uᴘʟᴏᴀᴅ ғɪʟᴇs ᴡɪᴛʜ ǫᴜᴀʟɪᴛʏ ᴛᴀɢs
+3️⃣ Gᴇᴛ sʜᴀʀᴇᴀʙʟᴇ ʟɪɴᴋs ɪɴsᴛᴀɴᴛʟʏ
 
-**💡 Auto Upload Format:**
+💡 Aᴜᴛᴏ Uᴘʟᴏᴀᴅ Fᴏʀᴍᴀᴛ:
 `<Folder><File><Quality><Size>`
 
-**Example:** 
+Exᴀᴍᴘʟᴇ: 
 `<My Movies><Movie.mp4><1080p><2.5GB>`
 
-Use the buttons below to get started! 👇
+Usᴇ ᴛʜᴇ ʙᴜᴛᴛᴏɴs ʙᴇʟᴏᴡ ᴛᴏ ɢᴇᴛ sᴛᴀʀᴛᴇᴅ! 👇
 """
         
-        await message.reply_text(
-            welcome_text,
+        await message.reply_photo(
+            photo="https://iili.io/KvfAsPp.jpg",
+            caption=welcome_text,
             reply_markup=main_menu_kb()
         )
 
+    @bot.on_message(filters.command("api") & filters.private)
+    async def api_command(client, message: Message):
+        api_text = """
+┏━━━━━━━━━━━┓
+┃  🗂 Cᴏᴍᴘʟᴇᴛᴇ Aᴘɪ Dᴏᴄs ┃
+┗━━━━━━━━━━━┛
+
+━━━━━━━━━━━━━━━━━━━━━━━━
+
+1️⃣  GET `/api/folder_list?user_id={1740287480}&page={1}&page_size={200}`
+- qᴜᴇʀʏ ᴘᴀʀᴀᴍs: user_id (int), parent_id (str, optional), page (int), page_size (int)
+- sᴀᴍᴘʟᴇ ʀᴇsᴘᴏɴsᴇ:
+```json
+{
+  "success": "hi",
+  "folders": ["hi"],
+  "page": "hi",
+  "pageSize": "hi"
+}```
+━━━━━━━━━━━━━━━━━━━━━━━━
+
+2️⃣ GET `/api/file_list/{folder_id}`
+
+ᴘᴀᴛʜ ᴘᴀʀᴀᴍs: folder_id (str)
+
+sᴀᴍᴘʟᴇ ʀᴇsᴘᴏɴsᴇ:
+
+```json
+{
+  "success": "hi",
+  "folderId": "hi",
+  "folderName": "hi",
+  "files": ["hi"]
+}```
+━━━━━━━━━━━━━━━━━━━━━━━━
+
+3️⃣ GET `/api/stream/{master_group_id}`
+
+ᴘᴀᴛʜ ᴘᴀʀᴀᴍs: master_group_id (str)
+
+qᴜᴇʀʏ: quality (str, default="1080p")
+
+sᴀᴍᴘʟᴇ ʀᴇsᴘᴏɴsᴇ:
+
+```json
+{
+  "success": "hi",
+  "message": "hi",
+  "fileId": "hi",
+  "streamUrl": "hi",
+  "watchUrl": "hi",
+  "downloadUrl": "hi",
+  "quality": "hi",
+  "fileName": "hi",
+  "size": "hi"
+}```
+━━━━━━━━━━━━━━━━━━━━━━━━
+
+4️⃣ GET `/api/quality_info/{file_id}`
+
+ᴘᴀᴛʜ ᴘᴀʀᴀᴍs: file_id (str)
+
+sᴀᴍᴘʟᴇ ʀᴇsᴘᴏɴsᴇ:
+
+```json
+{
+  "success": "hi",
+  "master_group_id": "hi",
+  "baseName": "hi",
+  "qualities": ["hi"]
+}```
+━━━━━━━━━━━━━━━━━━━━━━━━
+
+5️⃣ GET `/api/s_file_list/{folder_id}`
+
+ᴘᴀᴛʜ ᴘᴀʀᴀᴍs: folder_id (str)
+
+sᴀᴍᴘʟᴇ ʀᴇsᴘᴏɴsᴇ:
+
+```json
+{
+  "success": "hi",
+  "folderId": "hi",
+  "folderName": "hi",
+  "fileGroups": ["hi"]
+}```
+━━━━━━━━━━━━━━━━━━━━━━━━
+
+6️⃣ GET `/api/quality_folders/{parent_folder_id}`
+
+ᴘᴀᴛʜ ᴘᴀʀᴀᴍs: parent_folder_id (str)
+
+sᴀᴍᴘʟᴇ ʀᴇsᴘᴏɴsᴇ:
+
+```json
+{
+  "success": "hi",
+  "parentFolderId": "hi",
+  "parentFolderName": "hi",
+  "qualityFolders": ["hi"]
+}```
+━━━━━━━━━━━━━━━━━━━━━━━━
+
+7️⃣ GET `/api/files_by_name/{folder_id}/{base_name}`
+
+ᴘᴀᴛʜ ᴘᴀʀᴀᴍs: folder_id (str), base_name (str)
+
+sᴀᴍᴘʟᴇ ʀᴇsᴘᴏɴsᴇ:
+
+```json
+{
+  "success": "hi",
+  "folderId": "hi",
+  "baseName": "hi",
+  "master_group_id": "hi",
+  "files": ["hi"]
+}```
+━━━━━━━━━━━━━━━━━━━━━━━━
+
+8️⃣ GET `/api/master_info/{master_group_id}`
+
+ᴘᴀᴛʜ ᴘᴀʀᴀᴍs: master_group_id (str)
+
+sᴀᴍᴘʟᴇ ʀᴇsᴘᴏɴsᴇ:
+
+```json
+{
+  "success": "hi",
+  "master_group_id": "hi",
+  "folderId": "hi",
+  "baseName": "hi",
+  "qualities": ["hi"],
+  "totalFiles": "hi"
+}```
+━━━━━━━━━━━━━━━━━━━━━━━━
+
+💬 ɴᴇᴇᴅ ʜᴇʟᴘ? ᴄᴏɴᴛᴀᴄᴛ sᴜᴘᴘᴏʀᴛ!
+"""
+        await message.reply_text(api_text)
+
     @bot.on_message(filters.command("help") & filters.private)
     async def help_command(client, message: Message):
-        """Handle /help command"""
         help_text = """
-📖 **TeleStore Bot - Complete Guide**
+┏━━━━━━━━━━┓
+┃  📖 Cᴏᴍᴘʟᴇᴛᴇ Gᴜɪᴅᴇ  ┃
+┗━━━━━━━━━━┛
 
-**━━━━━━━━━━━━━━━━━━━━**
+━━━━━━━━━━━━━━━━━━━━━━━━
 
-**📁 CREATING FOLDERS**
-• Command: `/newfolder <name>`
-• Example: `/newfolder My Movies`
-• Folders get auto-numbered IDs (1, 2, 3...)
+📁 CREATING FOLDERS
 
-**📤 UPLOADING FILES**
+Cᴏᴍᴍᴀɴᴅ: `/newfolder <name>`
+Exᴀᴍᴘʟᴇ: `/newfolder My Movies`
+Fᴏʟᴅᴇʀs ɢᴇᴛ ᴀᴜᴛᴏ-ɴᴜᴍʙᴇʀᴇᴅ IDs (1, 2, 3...)
 
-**Method 1: Auto Upload (Recommended)**
-Send file with caption in this format:
+━━━━━━━━━━━━━━━━━━━━━━━━
+
+📤 UPLOADING FILES
+
+Mᴇᴛʜᴏᴅ 1: Aᴜᴛᴏ Uᴘʟᴏᴀᴅ (Rᴇᴄᴏᴍᴍᴇɴᴅᴇᴅ)
+Sᴇɴᴅ ғɪʟᴇ ᴡɪᴛʜ ᴄᴀᴘᴛɪᴏɴ ɪɴ ᴛʜɪs ғᴏʀᴍᴀᴛ:
 `<Folder><Filename><Quality><Size>`
 
-Example:
+Exᴀᴍᴘʟᴇ:
 `<Action Movies><Avengers.mp4><1080p><2.5GB>`
 
-**Method 2: Manual Upload**
-1. Open folder from menu
-2. Click "Add Files"
-3. Select quality (4K/1080p/720p/480p/360p)
-4. Send your files
-5. Use /done when finished
+Mᴇᴛʜᴏᴅ 2: Mᴀɴᴜᴀʟ Uᴘʟᴏᴀᴅ
+1. Oᴘᴇɴ ғᴏʟᴅᴇʀ ғʀᴏᴍ ᴍᴇɴᴜ
+2. Cʟɪᴄᴋ "Aᴅᴅ Fɪʟᴇs"
+3. Sᴇʟᴇᴄᴛ ǫᴜᴀʟɪᴛʏ (4K/1080ᴘ/720ᴘ/480ᴘ/360ᴘ)
+4. Sᴇɴᴅ ʏᴏᴜʀ ғɪʟᴇs
+5. Usᴇ /done ᴡʜᴇɴ ғɪɴɪsʜᴇᴅ
 
-**🔗 GETTING LINKS**
-• Click any file to get:
-  - ▶️ Watch Link (streaming player)
-  - ⬇️ Download Link (direct download)
-  - 📋 Embed Link (for websites)
+━━━━━━━━━━━━━━━━━━━━━━━━
 
-**📊 BULK OPERATIONS**
-From any folder, get all links at once:
-• 🔗 All Embed Links
-• ⬇️ All Download Links
-• ▶️ All Watch Links
+🔗 GETTING LINKS
 
-**💾 DATABASE MANAGEMENT**
-• `/vanish` - Export full database backup
-• `/retrieve` - Restore from backup JSON
+Cʟɪᴄᴋ ᴀɴʏ ғɪʟᴇ ᴛᴏ ɢᴇᴛ:
+  • ▶️ Wᴀᴛᴄʜ Lɪɴᴋ (sᴛʀᴇᴀᴍɪɴɢ ᴘʟᴀʏᴇʀ)
+  • ⬇️ Dᴏᴡɴʟᴏᴀᴅ Lɪɴᴋ (ᴅɪʀᴇᴄᴛ ᴅᴏᴡɴʟᴏᴀᴅ)
+  • 📋 Eᴍʙᴇᴅ Lɪɴᴋ (ғᴏʀ ᴡᴇʙsɪᴛᴇs)
 
-**🎥 SUPPORTED FORMATS**
-MP4, MKV, AVI, MOV, WMV, FLV, WEBM, and more!
+━━━━━━━━━━━━━━━━━━━━━━━━
 
-**🔧 FEATURES**
-• Auto quality detection
-• Language detection
-• Metadata extraction
-• Master group linking
-• Real-time statistics
-• Multi-quality support
+📊 BULK OPERATIONS
 
-**━━━━━━━━━━━━━━━━━━━━**
+Fʀᴏᴍ ᴀɴʏ ғᴏʟᴅᴇʀ, ɢᴇᴛ ᴀʟʟ ʟɪɴᴋs ᴀᴛ ᴏɴᴄᴇ:
+- 🔗 Aʟʟ Eᴍʙᴇᴅ Lɪɴᴋs
+- ⬇️ Aʟʟ Dᴏᴡɴʟᴏᴀᴅ Lɪɴᴋs
+- ▶️ Aʟʟ Wᴀᴛᴄʜ Lɪɴᴋs
 
-💬 Need help? Contact support!
+━━━━━━━━━━━━━━━━━━━━━━━━
+
+💾 DATABASE MANAGEMENT
+
+- `/vanish` - Exᴘᴏʀᴛ ғᴜʟʟ ᴅᴀᴛᴀʙᴀsᴇ ʙᴀᴄᴋᴜᴘ
+- `/retrieve` - Rᴇsᴛᴏʀᴇ ғʀᴏᴍ ʙᴀᴄᴋᴜᴘ JSON
+
+━━━━━━━━━━━━━━━━━━━━━━━━
+
+🎥 SUPPORTED FORMATS
+
+MP4, MKV, AVI, MOV, WMV, FLV, WEBM, ᴀɴᴅ ᴍᴏʀᴇ!
+
+━━━━━━━━━━━━━━━━━━━━━━━━
+
+🔧 FEATURES
+
+- Aᴜᴛᴏ ǫᴜᴀʟɪᴛʏ ᴅᴇᴛᴇᴄᴛɪᴏɴ
+- Lᴀɴɢᴜᴀɢᴇ ᴅᴇᴛᴇᴄᴛɪᴏɴ
+- Mᴇᴛᴀᴅᴀᴛᴀ ᴇxᴛʀᴀᴄᴛɪᴏɴ
+- Mᴀsᴛᴇʀ ɢʀᴏᴜᴘ ʟɪɴᴋɪɴɢ
+- Rᴇᴀʟ-ᴛɪᴍᴇ sᴛᴀᴛɪsᴛɪᴄs
+- Mᴜʟᴛɪ-ǫᴜᴀʟɪᴛʏ sᴜᴘᴘᴏʀᴛ
+- Aᴘɪ sᴜᴘᴘᴏʀᴛ
+
+━━━━━━━━━━━━━━━━━━━━━━━━
+
+💬 Nᴇᴇᴅ ʜᴇʟᴘ? Cᴏɴᴛᴀᴄᴛ sᴜᴘᴘᴏʀᴛ!
         """
         await message.reply_text(help_text, reply_markup=main_menu_kb())
 
     @bot.on_message(filters.command("newfolder") & filters.private)
     async def newfolder_command(client, message: Message):
-        """Handle /newfolder command"""
         parts = message.text.split(maxsplit=1)
         if len(parts) < 2:
             await message.reply_text(
-                "❌ **Missing folder name!**\n\n"
-                "**Usage:** `/newfolder <name>`\n\n"
-                "**Examples:**\n"
-                "• `/newfolder My Movies`\n"
-                "• `/newfolder TV Shows 2024`\n"
-                "• `/newfolder Anime Collection`"
+                """
+❌ Mɪssɪɴɢ ғᴏʟᴅᴇʀ ɴᴀᴍᴇ!
+
+Usᴀɢᴇ: `/newfolder <name>`
+
+Exᴀᴍᴘʟᴇs:
+- `/newfolder My Movies`
+- `/newfolder TV Shows 2024`
+- `/newfolder Anime Collection`
+                """
             )
             return
 
         folder_name = parts[1].strip()
         if len(folder_name) < 2:
-            await message.reply_text("❌ Folder name must be at least 2 characters long.")
+            await message.reply_text("❌ Fᴏʟᴅᴇʀ ɴᴀᴍᴇ ᴍᴜsᴛ ʙᴇ ᴀᴛ ʟᴇᴀsᴛ 2 ᴄʜᴀʀᴀᴄᴛᴇʀs ʟᴏɴɢ.")
             return
 
         folder_id = await generate_next_folder_id()
@@ -140,38 +303,42 @@ MP4, MKV, AVI, MOV, WMV, FLV, WEBM, and more!
         await create_folder(folder_id=folder_id, name=folder_name, created_by=message.from_user.id)
 
         await message.reply_text(
-            f"✅ **Folder created successfully!**\n\n"
-            f"📁 **Name:** {folder_name}\n"
-            f"🆔 **Folder ID:** `{folder_id}`\n"
-            f"📊 **Status:** Ready for uploads\n\n"
-            f"**Next Steps:**\n"
-            f"1. Open folder from /myfolders\n"
-            f"2. Click 'Add Files'\n"
-            f"3. Select quality and upload\n\n"
-            f"Or use auto-upload format:\n"
-            f"`<{folder_name}><filename><quality><size>`",
+            f"""
+✅ Fᴏʟᴅᴇʀ ᴄʀᴇᴀᴛᴇᴅ sᴜᴄᴄᴇssғᴜʟʟʏ!
+
+📁 Nᴀᴍᴇ: {folder_name}
+🆔 Fᴏʟᴅᴇʀ ID: `{folder_id}`
+📊 Sᴛᴀᴛᴜs: Rᴇᴀᴅʏ ғᴏʀ ᴜᴘʟᴏᴀᴅs
+
+Nᴇxᴛ Sᴛᴇᴘs:
+1. Oᴘᴇɴ ғᴏʟᴅᴇʀ ғʀᴏᴍ /myfolders
+2. Cʟɪᴄᴋ 'Aᴅᴅ Fɪʟᴇs'
+3. Sᴇʟᴇᴄᴛ ǫᴜᴀʟɪᴛʏ ᴀɴᴅ ᴜᴘʟᴏᴀᴅ
+
+Oʀ ᴜsᴇ ᴀᴜᴛᴏ-ᴜᴘʟᴏᴀᴅ ғᴏʀᴍᴀᴛ:
+`<{folder_name}><filename><quality><size>`
+            """,
             reply_markup=main_menu_kb()
         )
 
     @bot.on_message(filters.command("stats") & filters.private)
     async def stats_command(client, message: Message):
-        """Handle /stats command"""
         stats = await get_stats(message.from_user.id)
         
         stats_text = f"""
-📊 **Your Storage Statistics**
+┏━━━━━━━━━━┓
+┃  📊 Yᴏᴜʀ Sᴛᴀᴛɪsᴛɪᴄs  ┃
+┗━━━━━━━━━━┛
 
-**━━━━━━━━━━━━━━━━━━━━**
+📁 Fᴏʟᴅᴇʀs: {stats['folders']}
+🎬 Tᴏᴛᴀʟ Fɪʟᴇs: {stats['files']}
+💾 Sᴛᴏʀᴀɢᴇ Usᴇᴅ: {stats['total_size_mb']:.2f} MB
+👁️ Tᴏᴛᴀʟ Vɪᴇᴡs: {stats.get('views', 0):,}
+⬇️ Tᴏᴛᴀʟ Dᴏᴡɴʟᴏᴀᴅs: {stats.get('downloads', 0):,}
 
-📁 **Folders:** {stats['folders']}
-🎬 **Total Files:** {stats['files']}
-💾 **Storage Used:** {stats['total_size_mb']:.2f} MB
-👁️ **Total Views:** {stats.get('views', 0):,}
-⬇️ **Total Downloads:** {stats.get('downloads', 0):,}
+━━━━━━━━━━━━━━━━━━━━━━━━
 
-**━━━━━━━━━━━━━━━━━━━━**
-
-💡 **Tip:** Keep uploading to expand your library!
+💡 Tɪᴘ: Kᴇᴇᴘ ᴜᴘʟᴏᴀᴅɪɴɢ ᴛᴏ ᴇxᴘᴀɴᴅ ʏᴏᴜʀ ʟɪʙʀᴀʀʏ!
 """
         
         await message.reply_text(
@@ -181,9 +348,21 @@ MP4, MKV, AVI, MOV, WMV, FLV, WEBM, and more!
 
     @bot.on_message(filters.command("myfolders") & filters.private)
     async def myfolders_command(client, message: Message):
-        """Handle /myfolders command - quick access to folders"""
         await show_folders_page(message, page=1, edit=False)
 
+    @bot.on_message(filters.command("cancel") & filters.private)
+    async def cancel_command(client, message: Message):
+        from bot.handlers.callbacks import user_rename_context
+        
+        user_id = message.from_user.id
+        if user_id in user_rename_context:
+            del user_rename_context[user_id]
+            await message.reply_text(
+                "❌ Oᴘᴇʀᴀᴛɪᴏɴ ᴄᴀɴᴄᴇʟʟᴇᴅ.",
+                reply_markup=main_menu_kb()
+            )
+        else:
+            await message.reply_text("Nᴏ ᴏᴘᴇʀᴀᴛɪᴏɴ ᴛᴏ ᴄᴀɴᴄᴇʟ.")
     @bot.on_message(filters.command("vanish") & filters.private)
     async def vanish_command(client, message: Message):
         """Handle /vanish command - Export database backup"""
