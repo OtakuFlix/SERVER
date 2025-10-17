@@ -8,17 +8,29 @@ from database.connection import connect_db, disconnect_db
 from config import config
 from bot.client import set_bot
 from api.routes import stream, download, api_endpoints
+import httpx
 
 bot = None
 idle_task = None
+keep_alive_task = None
+
+async def keep_alive(url: str, interval: int = 300):
+    """Ping the server periodically to prevent sleeping on Koyeb"""
+    async with httpx.AsyncClient() as client:
+        while True:
+            try:
+                await client.get(url, timeout=10)
+                print(f"[KEEP-ALIVE] Pinged {url}")
+            except Exception as e:
+                print(f"[KEEP-ALIVE] Ping failed: {e}")
+            await asyncio.sleep(interval)
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Manage bot, database and API lifecycle"""
-    global bot, idle_task
+    global bot, idle_task, keep_alive_task
     
     print(f"[STARTUP] Initializing TeleStore Bot...")
-    
     await connect_db()
     
     bot = Client(
@@ -32,7 +44,6 @@ async def lifespan(app: FastAPI):
     print(f"[STARTUP] Bot client created")
     
     set_bot(bot)
-    
     register_all_handlers(bot)
     print(f"[STARTUP] Handlers registered")
     
@@ -46,6 +57,9 @@ async def lifespan(app: FastAPI):
     
     idle_task = asyncio.create_task(idle())
     print(f"[STARTUP] Bot is now listening for messages...")
+
+    # Start keep-alive task
+    keep_alive_task = asyncio.create_task(keep_alive(config.BASE_APP_URL))
     
     yield
     
@@ -56,6 +70,14 @@ async def lifespan(app: FastAPI):
             await idle_task
         except asyncio.CancelledError:
             pass
+
+    if keep_alive_task:
+        keep_alive_task.cancel()
+        try:
+            await keep_alive_task
+        except asyncio.CancelledError:
+            pass
+
     await bot.stop()
     await disconnect_db()
     print("[SHUTDOWN] Shutdown complete")
