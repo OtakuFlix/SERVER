@@ -1117,16 +1117,19 @@ async def embed_master_group(masterGroupId: str, request: Request, quality: str 
             height: 100vh;
         }}
         .art-setting-panel {{
-            border-radius: 12px !important;
+            border-radius: 20px !important;
             margin-bottom: 10px !important;
         }}
+        .art-icon-switchOn svg path {{
+            fill: #ff2525 !important;
+        }}
         .art-settings {{
-            background: rgba(0, 0, 0, 0.414) !important;
-            backdrop-filter: blur(2px) !important;
-            border-radius: 12px !important;
+            background: rgba(0, 0, 0, 0.22) !important;
+            backdrop-filter: blur(1px) !important;
+            border-radius: 15px !important;
         }}
         .art-setting-item:hover {{
-            border-radius: 5px !important;
+            border-radius: 8px !important;
             background: rgba(255, 255, 255, 0.1) !important;
         }}
     </style>
