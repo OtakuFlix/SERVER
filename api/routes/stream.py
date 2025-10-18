@@ -8,6 +8,7 @@ from pyrogram.file_id import FileId, FileType, ThumbnailSource
 from pyrogram.session import Session, Auth
 from pyrogram import utils as pyro_utils
 import json
+from urllib.parse import quote
 import re
 import math
 from utils.master_id import generate_master_group_id
@@ -493,7 +494,7 @@ async def stream_file_direct(file_data: dict, request: Request):
         'Content-Type': mime_type,
         'Accept-Ranges': 'bytes',
         'Content-Length': str(req_length),
-        'Content-Disposition': f'inline; filename="{file_name}"'
+        'Content-Disposition': f"inline; filename*=UTF-8''{quote(file_name)}"
     }
     
     if range_header:

@@ -153,7 +153,7 @@ svg.icon path {
 
 /* Settings Panel Styling */
 .art-setting-panel {
-    background: rgba(0, 0, 0, 0.414) !important;
+    background: rgba(0, 0, 0, 0.22) !important;
     border-radius: 12px !important;
     margin-bottom: 10px !important;
     backdrop-filter: blur(1px);

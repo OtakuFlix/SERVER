@@ -7,6 +7,7 @@ from pyrogram import raw
 from pyrogram.file_id import FileId, FileType, ThumbnailSource
 from pyrogram import utils as pyro_utils
 from pyrogram.session import Session, Auth
+from urllib.parse import quote
 import re
 import os
 
@@ -85,7 +86,7 @@ async def download_file(fileId: str):
             raise
     
     headers = {
-        'Content-Disposition': f'attachment; filename="{custom_file_name}"',
+        'Content-Disposition': f"attachment; filename*=UTF-8''{quote(custom_file_name)}",
         'Content-Type': mime_type,
         'Content-Length': str(file_size),
     }
