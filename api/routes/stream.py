@@ -46,7 +46,7 @@ def get_artplayer_config_with_quality(file_id: str, stream_url: str, file_name: 
             style: {{ fontSize: '18px', padding: '0 10px' }},
             click: function () {{
                 window.open('{download_url}', '_blank');
-                art.notice.show = '<i class="fas fa-download"></i> Starting download...';
+                art.notice.show = 'Starting download...';
             }},
         }},"""
     
@@ -68,16 +68,44 @@ def get_artplayer_config_with_quality(file_id: str, stream_url: str, file_name: 
             }
         },"""
     
-    # Determine API endpoint based on mode
     api_endpoint = f'/api/quality_info/{file_id}' if not is_master_mode else f'/api/master_info/{master_group_id}'
     
     return f"""
+        function getStoredSettings() {{
+            try {{
+                const stored = localStorage.getItem('artplayer_settings');
+                return stored ? JSON.parse(stored) : {{}};
+            }} catch (e) {{
+                console.error('Error reading settings:', e);
+                return {{}};
+            }}
+        }}
+
+        function saveSettings(key, value) {{
+            try {{
+                const settings = getStoredSettings();
+                settings[key] = value;
+                localStorage.setItem('artplayer_settings', JSON.stringify(settings));
+                console.log('Settings saved:', key, value);
+            }} catch (e) {{
+                console.error('Error saving settings:', e);
+            }}
+        }}
+
+        const storedSettings = getStoredSettings();
+        const savedAutoplay = storedSettings.autoplay !== undefined ? storedSettings.autoplay : false;
+        const savedVolume = storedSettings.volume !== undefined ? storedSettings.volume : 0.8;
+        const savedLoop = storedSettings.loop !== undefined ? storedSettings.loop : false;
+        const savedAspectRatio = storedSettings.aspectRatio || 'default';
+
+        console.log('Loading player with settings:', storedSettings);
+
         const art = new Artplayer({{
             container: '#artplayer',
             url: '{stream_url}',
             title: {json.dumps(file_name)},
-            volume: 0.8,
-            autoplay: false,
+            volume: savedVolume,
+            autoplay: savedAutoplay,
             pip: true,
             miniProgressBar: false,
             fullscreen: true,
@@ -86,12 +114,11 @@ def get_artplayer_config_with_quality(file_id: str, stream_url: str, file_name: 
             playbackRate: true,
             autoPlayback: true,
             airplay: true,
-            autoplayback: true,
             aspectRatio: false,
             screenshot: true,
             hotkey: true,
             mutex: true,
-            loop: false,
+            loop: savedLoop,
             flip: true,
             theme: '#dc2626',
             lang: navigator.language.toLowerCase(),
@@ -108,6 +135,21 @@ def get_artplayer_config_with_quality(file_id: str, stream_url: str, file_name: 
             }},
         }});
 
+        // Apply saved aspect ratio after player is ready
+        if (savedAspectRatio && savedAspectRatio !== 'default') {{
+            art.on('ready', () => {{
+                art.aspectRatio = savedAspectRatio;
+            }});
+        }}
+
+        art.on('volume', (volume) => {{
+            saveSettings('volume', volume);
+        }});
+
+        art.on('video:ratechange', () => {{
+            saveSettings('playbackRate', art.playbackRate);
+        }});
+
         async function fetchQualityOptions() {{
             try {{
                 const response = await fetch('{api_endpoint}');
@@ -118,12 +160,10 @@ def get_artplayer_config_with_quality(file_id: str, stream_url: str, file_name: 
                     return [];
                 }}
                 
-                // Convert qualities object to array if needed
                 let qualitiesArray = [];
                 if (Array.isArray(data.qualities)) {{
                     qualitiesArray = data.qualities;
                 }} else {{
-                    // Convert object to array (for master_info format)
                     qualitiesArray = Object.entries(data.qualities).map(([quality, info]) => ({{
                         quality: quality,
                         fileId: info.fileId,
@@ -174,9 +214,9 @@ def get_artplayer_config_with_quality(file_id: str, stream_url: str, file_name: 
                             }}
                         }});
                         
-                        art.notice.show = `<i class="fas fa-sliders"></i> Switched to ${{item.quality}}`;
+                        art.notice.show = `Switched to ${{item.quality}}`;
+                        saveSettings('quality', item.quality);
                         
-                        // Update URL without reload
                         const newUrl = {'`/watch/master/${master_group_id}?quality=${item.quality}`' if is_master_mode else '`/watch/${item.value}`'};
                         window.history.replaceState(null, '', newUrl);
                         
@@ -209,30 +249,49 @@ def get_artplayer_config_with_quality(file_id: str, stream_url: str, file_name: 
                 html: 'Aspect Ratio',
                 icon: '<i class="fas fa-expand"></i>',
                 selector: [
-                    {{ html: 'Default', value: 'default', default: true }},
-                    {{ html: '16:9', value: '16:9' }},
-                    {{ html: '4:3', value: '4:3' }},
-                    {{ html: '21:9', value: '21:9' }},
-                    {{ html: '2.35:1', value: '2.35:1' }},
+                    {{ html: 'Default', value: 'default', default: savedAspectRatio === 'default' }},
+                    {{ html: '16:9', value: '16:9', default: savedAspectRatio === '16:9' }},
+                    {{ html: '4:3', value: '4:3', default: savedAspectRatio === '4:3' }},
+                    {{ html: '21:9', value: '21:9', default: savedAspectRatio === '21:9' }},
+                    {{ html: '2.35:1', value: '2.35:1', default: savedAspectRatio === '2.35:1' }},
                 ],
                 onSelect: function (item) {{
                     art.aspectRatio = item.value;
-                    art.notice.show = '<i class="fas fa-expand"></i> Aspect: ' + item.html;
+                    art.notice.show = 'Aspect: ' + item.html;
+                    saveSettings('aspectRatio', item.value);
                     return item.html;
+                }},
+            }});
+
+            art.setting.add({{
+                html: 'Autoplay',
+                icon: '<i class="fas fa-play"></i>',
+                switch: savedAutoplay,
+                onSwitch: function (item) {{
+                    const newState = !item.switch;
+                    saveSettings('autoplay', newState);
+                    art.notice.show = 'Autoplay: ' + (newState ? 'On' : 'Off');
+                    return newState;
                 }},
             }});
 
             art.setting.add({{
                 html: 'Loop Playback',
                 icon: '<i class="fas fa-rotate"></i>',
-                switch: false,
+                switch: savedLoop,
                 onSwitch: function (item) {{
-                    art.loop = !art.loop;
-                    item.tooltip = art.loop ? 'Loop: On' : 'Loop: Off';
-                    art.notice.show = art.loop ? '<i class="fas fa-check"></i> Loop enabled' : '<i class="fas fa-times"></i> Loop disabled';
-                    return !item.switch;
+                    const newState = !item.switch;
+                    art.loop = newState;
+                    saveSettings('loop', newState);
+                    item.tooltip = newState ? 'Loop: On' : 'Loop: Off';
+                    art.notice.show = newState ? 'Loop enabled' : 'Loop disabled';
+                    return newState;
                 }},
             }});
+
+            if (storedSettings.playbackRate) {{
+                art.playbackRate = storedSettings.playbackRate;
+            }}
         }});
     """
 
@@ -480,6 +539,28 @@ async def watch_file(fileId: str, request: Request):
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/artplayer@5.3.0/dist/artplayer.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="/static/player-theme.css">
+    <style>
+        .art-setting-panel {{
+            background: rgba(0, 0, 0, 0.85) !important;
+            border-radius: 12px !important;
+            margin-bottom: 10px !important;
+            backdrop-filter: blur(10px);
+        }}
+        .art-settings {{
+            border-radius: 12px !important;
+        }}
+    </style>
+    <style>
+        .art-setting-panel {{
+            background: rgba(0, 0, 0, 0.85) !important;
+            border-radius: 12px !important;
+            margin-bottom: 10px !important;
+            backdrop-filter: blur(10px);
+        }}
+        .art-settings {{
+            border-radius: 12px !important;
+        }}
+    </style>
 </head>
 <body>
     <div class="top-header">
@@ -657,30 +738,19 @@ async def watch_file(fileId: str, request: Request):
     
     return HTMLResponse(content=html)
 
-# NEW: Watch with Master Group ID
 @router.get("/watch/master/{masterGroupId}")
 async def watch_master_group(masterGroupId: str, request: Request, quality: str = Query(default="1080p")):
-    """Watch video using master group ID with quality selection"""
     from database.connection import get_database
     
-    # Validate master group ID format
     if not re.match(r'^[a-f0-9]{24}$', masterGroupId):
         raise HTTPException(status_code=400, detail="Invalid master group ID format")
     
     db = get_database()
-    
-    # Find files matching this master group ID
-    all_files = await db.files.find({}).to_list(length=None)
-    
-    # Query directly by parent_master_group_id
-    matched_files = await db.files.find({
-        'parent_master_group_id': masterGroupId
-    }).to_list(length=None)
+    matched_files = await db.files.find({'parent_master_group_id': masterGroupId}).to_list(length=None)
     
     if not matched_files:
         raise HTTPException(status_code=404, detail="Master group not found")
     
-    # Try to find the requested quality, fallback to first available
     target_file = None
     for file in matched_files:
         if file.get('quality') == quality:
@@ -942,6 +1012,13 @@ async def embed_file(fileId: str, request: Request):
             width: 100vw;
             height: 100vh;
         }}
+        .art-setting-panel {{
+            border-radius: 12px !important;
+        }}
+        .art-settings {{
+            border-radius: 12px !important;
+            margin-bottom: 12px !important;
+        }}
     </style>
 </head>
 <body>
@@ -979,23 +1056,15 @@ async def embed_file(fileId: str, request: Request):
     
     return HTMLResponse(content=html)
 
-# NEW: Embed with Master Group ID
 @router.get("/embed/master/{masterGroupId}")
 async def embed_master_group(masterGroupId: str, request: Request, quality: str = Query(default="1080p")):
-    """Embed video using master group ID with quality selection"""
     from database.connection import get_database
     
     if not re.match(r'^[a-f0-9]{24}$', masterGroupId):
         raise HTTPException(status_code=400, detail="Invalid master group ID format")
 
     db = get_database()
-    
-    all_files = await db.files.find({}).to_list(length=None)
-    
-    # Query directly by parent_master_group_id
-    matched_files = await db.files.find({
-        'parent_master_group_id': masterGroupId
-    }).to_list(length=None)
+    matched_files = await db.files.find({'parent_master_group_id': masterGroupId}).to_list(length=None)
         
     if not matched_files:
         raise HTTPException(status_code=404, detail="Master group not found")
@@ -1046,6 +1115,19 @@ async def embed_master_group(masterGroupId: str, request: Request, quality: str 
             left: 0;
             width: 100vw;
             height: 100vh;
+        }}
+        .art-setting-panel {{
+            background: rgba(0, 0, 0, 0.414) !important;
+            backdrop-filter: blur(2px);
+            border-radius: 12px !important;
+            margin-bottom: 10px !important;
+        }}
+        .art-settings {{
+            border-radius: 12px !important;
+        }}
+        .art-setting-item:hover {{
+            border-radius: 5px !important;
+            background: rgba(255, 255, 255, 0.1) !important;
         }}
     </style>
 </head>
