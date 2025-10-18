@@ -1117,12 +1117,12 @@ async def embed_master_group(masterGroupId: str, request: Request, quality: str 
             height: 100vh;
         }}
         .art-setting-panel {{
-            background: rgba(0, 0, 0, 0.414) !important;
-            backdrop-filter: blur(2px);
             border-radius: 12px !important;
             margin-bottom: 10px !important;
         }}
         .art-settings {{
+            background: rgba(0, 0, 0, 0.414) !important;
+            backdrop-filter: blur(2px) !important;
             border-radius: 12px !important;
         }}
         .art-setting-item:hover {{
