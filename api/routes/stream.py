@@ -79,13 +79,14 @@ def get_artplayer_config_with_quality(file_id: str, stream_url: str, file_name: 
             volume: 0.8,
             autoplay: false,
             pip: true,
-            miniProgressBar: true,
+            miniProgressBar: false,
             fullscreen: true,
-            fullscreenWeb: true,
+            fullscreenWeb: false,
             setting: true,
             playbackRate: true,
             autoPlayback: true,
             airplay: true,
+            autoplayback: true,
             aspectRatio: false,
             screenshot: true,
             hotkey: true,
@@ -205,26 +206,6 @@ def get_artplayer_config_with_quality(file_id: str, stream_url: str, file_name: 
             }});
 
             art.setting.add({{
-                html: 'Playback Speed',
-                icon: '<i class="fas fa-gauge-high"></i>',
-                selector: [
-                    {{ html: '0.25x', value: 0.25 }},
-                    {{ html: '0.5x', value: 0.5 }},
-                    {{ html: '0.75x', value: 0.75 }},
-                    {{ html: 'Normal', value: 1, default: true }},
-                    {{ html: '1.25x', value: 1.25 }},
-                    {{ html: '1.5x', value: 1.5 }},
-                    {{ html: '1.75x', value: 1.75 }},
-                    {{ html: '2x', value: 2 }},
-                ],
-                onSelect: function (item) {{
-                    art.playbackRate = item.value;
-                    art.notice.show = '<i class="fas fa-gauge-high"></i> Speed: ' + item.html;
-                    return item.html;
-                }},
-            }});
-
-            art.setting.add({{
                 html: 'Aspect Ratio',
                 icon: '<i class="fas fa-expand"></i>',
                 selector: [
@@ -243,7 +224,7 @@ def get_artplayer_config_with_quality(file_id: str, stream_url: str, file_name: 
 
             art.setting.add({{
                 html: 'Loop Playback',
-                icon: '<i class="fas fa-repeat"></i>',
+                icon: '<i class="fas fa-rotate"></i>',
                 switch: false,
                 onSwitch: function (item) {{
                     art.loop = !art.loop;
